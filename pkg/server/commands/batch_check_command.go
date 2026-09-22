@@ -97,7 +97,7 @@ func NewBatchCheckCommand(checker Checker, opts ...BatchCheckQueryOption) *Batch
 }
 
 func (bq *BatchCheckQuery) Execute(ctx context.Context, params *BatchCheckCommandParams) (map[CorrelationID]*BatchCheckOutcome, *BatchCheckMetadata, error) {
-	if len(params.Checks) >= int(bq.maxChecksAllowed) {
+	if len(params.Checks) > int(bq.maxChecksAllowed) {
 		return nil, nil, &BatchCheckValidationError{
 			Message: "batchCheck received " + strconv.Itoa(len(params.Checks)) + " checks, the maximum allowed is " + strconv.Itoa(int(bq.maxChecksAllowed)),
 		}
@@ -120,7 +120,7 @@ func (bq *BatchCheckQuery) Execute(ctx context.Context, params *BatchCheckComman
 		key := generateCacheKeyFromCheck(check, params.StoreID, params.AuthorizationModelID)
 
 		if item, ok := cacheKeyMap[key]; ok {
-			item.CorrelationIDs = []CorrelationID{CorrelationID(check.GetCorrelationId())}
+			item.CorrelationIDs = append(item.CorrelationIDs, CorrelationID(check.GetCorrelationId()))
 		} else {
 			cacheKeyMap[key] = &checkAndCorrelationIDs{
 				Check:          check,
@@ -169,12 +169,12 @@ func (bq *BatchCheckQuery) Execute(ctx context.Context, params *BatchCheckComman
 				Err:                 err,
 			})
 			totalDispatchCount.Add(res.DispatchCount)
-			if res.WasThrottled {
+			if res.DispatchThrottled {
 				dispatchThrottleCount.Add(1)
 			}
 			totalQueryCount.Add(res.DatastoreQueryCount)
 			totalItemCount.Add(res.DatastoreItemCount)
-			if res.DispatchThrottled {
+			if res.WasThrottled {
 				datastoreThrottleCount.Add(1)
 			}
 			return nil
