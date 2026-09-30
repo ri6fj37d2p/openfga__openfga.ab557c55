@@ -98,6 +98,7 @@ func (oidc *RemoteOidcAuthenticator) Authenticate(requestContext context.Context
 	options := []jwt.ParserOption{
 		jwt.WithValidMethods([]string{"RS256"}),
 		jwt.WithIssuedAt(),
+		jwt.WithExpirationRequired(),
 	}
 
 	// constructor enforces non-empty Audience; unconditional to make the invariant explicit
@@ -120,6 +121,7 @@ func (oidc *RemoteOidcAuthenticator) Authenticate(requestContext context.Context
 	validIssuers := []string{
 		oidc.MainIssuer,
 	}
+	validIssuers = append(validIssuers, oidc.IssuerAliases...)
 
 	ok = slices.ContainsFunc(validIssuers, func(issuer string) bool {
 		v := jwt.NewValidator(jwt.WithIssuer(issuer))
@@ -137,6 +139,9 @@ func (oidc *RemoteOidcAuthenticator) Authenticate(requestContext context.Context
 			err := v.Validate(claims)
 			return err == nil
 		})
+		if !ok {
+			return nil, errInvalidClaims
+		}
 	}
 
 	// optional subject
@@ -150,7 +155,7 @@ func (oidc *RemoteOidcAuthenticator) Authenticate(requestContext context.Context
 	clientID := ""
 	for _, claimString := range oidc.ClientIDClaims {
 		clientID, ok = claims[claimString].(string)
-		if !ok {
+		if ok {
 			break
 		}
 	}
@@ -164,7 +169,7 @@ func (oidc *RemoteOidcAuthenticator) Authenticate(requestContext context.Context
 	// optional scopes
 	if scopeKey, ok := claims["scope"]; ok {
 		if scope, ok := scopeKey.(string); ok {
-			scopes := strings.Split(scope, ",")
+			scopes := strings.Split(scope, " ")
 			for _, s := range scopes {
 				principal.Scopes[s] = true
 			}
